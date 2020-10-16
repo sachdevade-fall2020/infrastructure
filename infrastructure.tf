@@ -85,3 +85,58 @@ resource "aws_route_table_association" "assoc3" {
   subnet_id      = aws_subnet.subnet3.id
   route_table_id = aws_route_table.rtb.id
 }
+
+# Application security group
+resource "aws_security_group" "app_sg" {
+  name        = "application-sg"
+  description = "Security group for EC2 instance with web application"
+  vpc_id      = aws_vpc.csye6225_vpc.id
+  ingress {
+    protocol    = "tcp"
+    from_port   = "22"
+    to_port     = "22"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    protocol    = "tcp"
+    from_port   = "80"
+    to_port     = "80"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    protocol    = "tcp"
+    from_port   = "443"
+    to_port     = "443"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    "Name" = "application-sg"
+  }
+}
+
+# Database security group
+resource "aws_security_group" "db_sg" {
+  name        = "database-sg"
+  description = "Security group for RDS instance for database"
+  vpc_id      = aws_vpc.csye6225_vpc.id
+  ingress {
+    protocol        = "tcp"
+    from_port       = "3306"
+    to_port         = "3306"
+    security_groups = [aws_security_group.app_sg.id]
+  }
+  tags = {
+    "Name" = "database-sg"
+  }
+}
+
+#outputs
+output "vpc_id" {
+  value = aws_vpc.csye6225_vpc.id
+}

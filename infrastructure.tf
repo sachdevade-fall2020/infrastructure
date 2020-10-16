@@ -155,6 +155,55 @@ resource "aws_s3_bucket" "s3_bucket" {
   }
 }
 
+#iam role for ec2
+resource "aws_iam_role" "ec2_role" {
+  description        = "Policy for EC2 instance"
+  name               = "ec2-role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17", 
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole", 
+      "Effect": "Allow", 
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      }
+    }
+  ]
+}
+EOF
+  tags = {
+    "Name" = "ec2-iam-role"
+  }
+}
+
+#policy document
+data "aws_iam_policy_document" "s3_policy_document" {
+  version = "2012-10-17"
+  statement {
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:DeleteObject",
+      "s3:ListBucket"
+    ]
+    resources = [
+      "${aws_s3_bucket.s3_bucket.arn}",
+      "${aws_s3_bucket.s3_bucket.arn}/*"
+    ]
+  }
+  depends_on = [aws_s3_bucket.s3_bucket]
+}
+
+#iam policy for role
+resource "aws_iam_role_policy" "s3_policy" {
+  name       = "s3-policy"
+  role       = aws_iam_role.ec2_role.id
+  policy     = data.aws_iam_policy_document.s3_policy_document.json
+  depends_on = [aws_s3_bucket.s3_bucket]
+}
+
 #outputs
 output "vpc_id" {
   value = aws_vpc.csye6225_vpc.id

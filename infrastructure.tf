@@ -136,7 +136,34 @@ resource "aws_security_group" "db_sg" {
   }
 }
 
+#s3 bucket
+resource "aws_s3_bucket" "s3_bucket" {
+  lifecycle_rule {
+    id      = "StorageTransitionRule"
+    enabled = true
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+  }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+}
+
 #outputs
 output "vpc_id" {
   value = aws_vpc.csye6225_vpc.id
+}
+
+output "bucket_domain_name" {
+  value = aws_s3_bucket.s3_bucket.bucket_domain_name
+}
+
+output "bucket_arn" {
+  value = aws_s3_bucket.s3_bucket.arn
 }

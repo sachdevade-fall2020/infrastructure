@@ -204,6 +204,38 @@ resource "aws_iam_role_policy" "s3_policy" {
   depends_on = [aws_s3_bucket.s3_bucket]
 }
 
+#db subnet group for rds
+resource "aws_db_subnet_group" "db_subnet_group" {
+  name = "csye6225-db-subnet-group"
+  description = "Subnet group for RDS"
+  subnet_ids  = [aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id]
+  tags = {
+    "Name" = "db-subnet-group"
+  }
+}
+
+#rds
+resource "aws_db_instance" "rds" {
+  allocated_storage      = var.db_storage_size
+  identifier             = "csye6225-rds"
+  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
+  vpc_security_group_ids = [aws_security_group.db_sg.id]
+  instance_class         = var.db_instance_class
+  engine                 = var.db_engine
+  engine_version         = var.db_engine_version
+  name                   = var.db_name
+  username               = var.db_username
+  password               = var.db_password
+  publicly_accessible    = var.db_public_access
+  multi_az               = var.db_multiaz
+  skip_final_snapshot    = true
+  tags = {
+    "Name" = "rds"
+  }
+}
+
+
+
 #outputs
 output "vpc_id" {
   value = aws_vpc.csye6225_vpc.id
@@ -215,4 +247,8 @@ output "bucket_domain_name" {
 
 output "bucket_arn" {
   value = aws_s3_bucket.s3_bucket.arn
+}
+
+output "rds_address" {
+  value = aws_db_instance.rds.address
 }

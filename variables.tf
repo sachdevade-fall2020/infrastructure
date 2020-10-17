@@ -27,3 +27,84 @@ variable "azs" {
   description = "Availability zones for subnets."
   default     = ["a", "b", "c"]
 }
+
+variable "db_storage_size" {
+  description = "Availability zones for subnets."
+  type        = number
+  default     = 20
+}
+
+variable "db_instance_class" {
+  description = "Instance class for RDS"
+  default     = "db.t3.micro"
+}
+
+variable "db_engine" {
+  description = "DB engine for RDS"
+  default     = "mysql"
+}
+
+variable "db_engine_version" {
+  description = "DB engine version for RDS"
+  default     = "5.7.22"
+}
+
+variable "db_name" {
+  description = "DB name"
+  default     = "csye6225"
+}
+
+variable "db_username" {
+  description = "DB username"
+  default     = "dbuser"
+}
+
+variable "db_password" {
+  description = "DB password"
+  default     = "DB4Fall@2020"
+}
+
+variable "db_public_access" {
+  description = "DB public accessibility"
+  type        = bool
+  default     = false
+}
+
+variable "db_multiaz" {
+  description = "DB multi AZ"
+  type        = bool
+  default     = false
+}
+
+variable "amis" {
+  type = map
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t2.micro"
+}
+
+variable "instance_vol_type" {
+  description = "EC2 volume type"
+  type        = string
+  default     = "gp2"
+}
+
+variable "instance_vol_size" {
+  description = "EC2 volume size"
+  type        = number
+  default     = 20
+}
+
+variable "instance_subnet" {
+  description = "EC2 subnet serial"
+  type        = number
+  default     = 1
+}
+
+variable "key_name" {
+  description = "Name of ssh key"
+  type        = string
+}

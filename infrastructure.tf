@@ -234,7 +234,43 @@ resource "aws_db_instance" "rds" {
   }
 }
 
+#iam instance profile for ec2
+resource "aws_iam_instance_profile" "ec2_profile" {
+  role = aws_iam_role.ec2_role.name
+}
 
+resource "aws_instance" "ec2" {
+  ami                  = var.amis[var.region]
+  instance_type        = var.instance_type
+  subnet_id            = element([aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id], var.instance_subnet - 1)
+  key_name             = var.key_name
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.id
+  security_groups      = [aws_security_group.app_sg.id]
+  ebs_block_device {
+    device_name           = "/dev/sda1"
+    volume_type           = var.instance_vol_type
+    volume_size           = var.instance_vol_size
+    delete_on_termination = true
+  }
+  user_data = <<EOF
+#!/bin/bash
+echo "# App Environment Variables"
+echo "export DB_HOST=${aws_db_instance.rds.address}" >> /etc/environment
+echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
+echo "export DB_DATABASE=${var.db_name}" >> /etc/environment
+echo "export DB_USERNAME=${var.db_username}" >> /etc/environment
+echo "export DB_PASSWORD=${var.db_password}" >> /etc/environment
+echo "export FILESYSTEM_DRIVER=s3" >> /etc/environment
+echo "export AWS_BUCKET=${aws_s3_bucket.s3_bucket.id}" >> /etc/environment
+echo "export AWS_DEFAULT_REGION=${var.region}" >> /etc/environment
+chown -R ubuntu:www-data /var/www
+usermod -a -G www-data ubuntu
+EOF
+  tags = {
+    "Name" = "ec2"
+  }
+  depends_on = [aws_db_instance.rds]
+}
 
 #outputs
 output "vpc_id" {
@@ -251,4 +287,8 @@ output "bucket_arn" {
 
 output "rds_address" {
   value = aws_db_instance.rds.address
+}
+
+output "ec2_public_ip" {
+  value = aws_instance.ec2.public_ip
 }

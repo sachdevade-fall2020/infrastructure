@@ -275,6 +275,23 @@ EOF
   depends_on = [aws_db_instance.rds]
 }
 
+#dynanodb table
+resource "aws_dynamodb_table" "dynamodb_table" {
+  name           = var.dynamodb_table
+  hash_key       = var.dynamodb_key
+  write_capacity = 5
+  read_capacity  = 5
+
+  attribute {
+    name = var.dynamodb_key
+    type = "S"
+  }
+
+  tags = {
+    "Name" = "csye6225-dynamodb"
+  }
+}
+
 #outputs
 output "vpc_id" {
   value = aws_vpc.csye6225_vpc.id
@@ -294,4 +311,8 @@ output "rds_address" {
 
 output "ec2_public_ip" {
   value = aws_instance.ec2.public_ip
+}
+
+output "dynamodb_name" {
+  value = aws_dynamodb_table.dynamodb_table.id
 }

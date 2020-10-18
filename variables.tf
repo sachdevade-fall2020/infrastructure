@@ -123,3 +123,13 @@ variable "key_name" {
   description = "Name of ssh key"
   type        = string
 }
+
+variable "dynamodb_table" {
+  description = "Table name for dynamodb"
+  default     = "csye6225"
+}
+
+variable "dynamodb_key" {
+  description = "Key for dynamodb table"
+  default     = "id"
+}

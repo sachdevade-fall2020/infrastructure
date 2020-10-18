@@ -138,6 +138,9 @@ resource "aws_security_group" "db_sg" {
 
 #s3 bucket
 resource "aws_s3_bucket" "s3_bucket" {
+  bucket        = var.bucket_name
+  acl           = var.bucket_acl
+  force_destroy = true
   lifecycle_rule {
     id      = "StorageTransitionRule"
     enabled = true
@@ -206,7 +209,7 @@ resource "aws_iam_role_policy" "s3_policy" {
 
 #db subnet group for rds
 resource "aws_db_subnet_group" "db_subnet_group" {
-  name = "csye6225-db-subnet-group"
+  name        = "csye6225-db-subnet-group"
   description = "Subnet group for RDS"
   subnet_ids  = [aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id]
   tags = {
@@ -217,7 +220,7 @@ resource "aws_db_subnet_group" "db_subnet_group" {
 #rds
 resource "aws_db_instance" "rds" {
   allocated_storage      = var.db_storage_size
-  identifier             = "csye6225-rds"
+  identifier             = var.db_identifier
   db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   instance_class         = var.db_instance_class

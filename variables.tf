@@ -28,8 +28,23 @@ variable "azs" {
   default     = ["a", "b", "c"]
 }
 
+variable "bucket_name" {
+  description = "Name of s3 bucket"
+  default     = "webapp.deepansh.sachdeva"
+}
+
+variable "bucket_acl" {
+  description = "ACL for s3 bucket"
+  default     = "private"
+}
+
+variable "db_identifier" {
+  description = "Identifier for rds"
+  default     = "csye6225-f20"
+}
+
 variable "db_storage_size" {
-  description = "Availability zones for subnets."
+  description = "Storage size for rds"
   type        = number
   default     = 20
 }

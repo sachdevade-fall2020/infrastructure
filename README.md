@@ -4,6 +4,14 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 - Subnets (x3) in different AZs of a region
 - Internet gateway
 - Public route table with a public route
+- Application security table
+- Database security table
+- S3 Bucket
+- IAM role with policy to access S3 bucket
+- DB subnet group
+- RDS instance for DB
+- EC2 instance for application
+- DynamoDB table
 
 # Usage
 

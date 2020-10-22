@@ -8,7 +8,7 @@ resource "aws_vpc" "csye6225_vpc" {
   cidr_block           = var.cidr_block
   enable_dns_hostnames = true
   tags = {
-    "Name" = var.vpc_name
+    "Name" = "${var.vpc_name}-${terraform.workspace}"
   }
 }
 
@@ -19,7 +19,7 @@ resource "aws_subnet" "subnet1" {
   availability_zone       = join("", [var.region, var.azs[0]])
   map_public_ip_on_launch = true
   tags = {
-    "Name" = "subnet1"
+    "Name" = "subnet1-${terraform.workspace}"
   }
 }
 
@@ -30,7 +30,7 @@ resource "aws_subnet" "subnet2" {
   availability_zone       = join("", [var.region, var.azs[1]])
   map_public_ip_on_launch = true
   tags = {
-    "Name" = "subnet2"
+    "Name" = "subnet2-${terraform.workspace}"
   }
 }
 
@@ -41,7 +41,7 @@ resource "aws_subnet" "subnet3" {
   availability_zone       = join("", [var.region, var.azs[2]])
   map_public_ip_on_launch = true
   tags = {
-    "Name" = "subnet3"
+    "Name" = "subnet3-${terraform.workspace}"
   }
 }
 
@@ -49,7 +49,7 @@ resource "aws_subnet" "subnet3" {
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.csye6225_vpc.id
   tags = {
-    "Name" = "csye6225-igw"
+    "Name" = "csye6225-igw-${terraform.workspace}"
   }
 }
 
@@ -57,7 +57,7 @@ resource "aws_internet_gateway" "igw" {
 resource "aws_route_table" "rtb" {
   vpc_id = aws_vpc.csye6225_vpc.id
   tags = {
-    "Name" = "csye6225-rtb"
+    "Name" = "csye6225-rtb-${terraform.workspace}"
   }
 }
 
@@ -116,7 +116,7 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = {
-    "Name" = "application-sg"
+    "Name" = "application-sg-${terraform.workspace}"
   }
 }
 
@@ -132,7 +132,7 @@ resource "aws_security_group" "db_sg" {
     security_groups = [aws_security_group.app_sg.id]
   }
   tags = {
-    "Name" = "database-sg"
+    "Name" = "database-sg-${terraform.workspace}"
   }
 }
 
@@ -161,7 +161,6 @@ resource "aws_s3_bucket" "s3_bucket" {
 #iam role for ec2
 resource "aws_iam_role" "ec2_role" {
   description        = "Policy for EC2 instance"
-  name               = "ec2-role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17", 
@@ -177,7 +176,7 @@ resource "aws_iam_role" "ec2_role" {
 }
 EOF
   tags = {
-    "Name" = "ec2-iam-role"
+    "Name" = "ec2-role-${terraform.workspace}"
   }
 }
 
@@ -201,7 +200,7 @@ data "aws_iam_policy_document" "s3_policy_document" {
 
 #iam policy for role
 resource "aws_iam_role_policy" "s3_policy" {
-  name       = "s3-policy"
+  name       = "WebAppS3"
   role       = aws_iam_role.ec2_role.id
   policy     = data.aws_iam_policy_document.s3_policy_document.json
   depends_on = [aws_s3_bucket.s3_bucket]
@@ -209,11 +208,11 @@ resource "aws_iam_role_policy" "s3_policy" {
 
 #db subnet group for rds
 resource "aws_db_subnet_group" "db_subnet_group" {
-  name        = "csye6225-db-subnet-group"
+  name        = "csye6225-db-subnet-group-${terraform.workspace}"
   description = "Subnet group for RDS"
   subnet_ids  = [aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id]
   tags = {
-    "Name" = "db-subnet-group"
+    "Name" = "db-subnet-group-${terraform.workspace}"
   }
 }
 
@@ -233,7 +232,7 @@ resource "aws_db_instance" "rds" {
   multi_az               = var.db_multiaz
   skip_final_snapshot    = true
   tags = {
-    "Name" = "rds"
+    "Name" = "rds-${terraform.workspace}"
   }
 }
 
@@ -270,7 +269,7 @@ chown -R ubuntu:www-data /var/www
 usermod -a -G www-data ubuntu
 EOF
   tags = {
-    "Name" = "ec2"
+    "Name" = "ec2-${terraform.workspace}"
   }
   depends_on = [aws_db_instance.rds]
 }
@@ -288,7 +287,7 @@ resource "aws_dynamodb_table" "dynamodb_table" {
   }
 
   tags = {
-    "Name" = "csye6225-dynamodb"
+    "Name" = "csye6225-dynamodb-${terraform.workspace}"
   }
 }
 

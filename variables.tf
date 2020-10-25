@@ -143,3 +143,8 @@ variable "ghactions_user" {
   description = "username for github actions"
   default     = "ghactions"
 }
+
+variable "root_domain" {
+  description = "Root domain for hosted zone"
+  default     = "deepanshsachdeva.me"
+}

@@ -26,3 +26,4 @@ dynamodb_table    =
 dynamodb_key      = 
 codedeploy_bucket = 
 ghactions_user    = 
+root_domain       =

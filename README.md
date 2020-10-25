@@ -49,6 +49,7 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 | dynamodb_key                     | DynamoDB hash key table                                                      | id                                  |
 | codedeploy_bucket                | S3 bucket for codedeploy builds                                              | codedeploy.deepanshsachdeva.me      |
 | ghactions_user                   | Username for github actions                                                  | ghactions                           |
+| root_domain                      | Root domain for hosted zone                                                  | deepanshsachdeva.me                 |
 
 #### Initialize a Terraform working directory
 ```

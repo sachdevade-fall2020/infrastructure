@@ -161,7 +161,7 @@ resource "aws_s3_bucket" "s3_bucket" {
 #iam role for ec2
 resource "aws_iam_role" "ec2_role" {
   description        = "Policy for EC2 instance"
-  name = "ec2-role-${terraform.workspace}"
+  name               = "ec2-role-${terraform.workspace}"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17", 
@@ -376,7 +376,7 @@ resource "aws_codedeploy_deployment_group" "deployment_group" {
   app_name              = aws_codedeploy_app.codedeploy_app.name
   deployment_group_name = "csye6225-webapp-deployment"
   deployment_style {
-    deployment_type   = "IN_PLACE"
+    deployment_type = "IN_PLACE"
   }
   auto_rollback_configuration {
     enabled = true
@@ -437,6 +437,20 @@ resource "aws_iam_user_policy" "ghactions_codedeploy_policy" {
   EOF
 }
 
+# data source to fetch hosted zone
+data "aws_route53_zone" "hosted_zone" {
+  name = "${var.profile}.${var.root_domain}"
+}
+
+# dns record to add public ip of ec2
+resource "aws_route53_record" "api_dns_record" {
+  zone_id = data.aws_route53_zone.hosted_zone.zone_id
+  name    = "api.${var.profile}.${var.root_domain}"
+  type    = "A"
+  ttl     = 30
+  records = [aws_instance.ec2.public_ip]
+}
+
 #outputs
 output "vpc_id" {
   value = aws_vpc.csye6225_vpc.id
@@ -460,4 +474,8 @@ output "ec2_public_ip" {
 
 output "dynamodb_name" {
   value = aws_dynamodb_table.dynamodb_table.id
+}
+
+output "api_domain_name" {
+  value = aws_route53_record.api_dns_record.name
 }

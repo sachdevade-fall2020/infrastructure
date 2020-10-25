@@ -133,3 +133,13 @@ variable "dynamodb_key" {
   description = "Key for dynamodb table"
   default     = "id"
 }
+
+variable "codedeploy_bucket" {
+  description = "S3 bucket for codedeploy"
+  default     = "codedeploy.deepanshsachdeva.me"
+}
+
+variable "ghactions_user" {
+  description = "username for github actions"
+  default     = "ghactions"
+}

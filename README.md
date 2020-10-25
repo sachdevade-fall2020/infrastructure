@@ -7,11 +7,14 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 - Application security table
 - Database security table
 - S3 Bucket
-- IAM role with policy to access S3 bucket
+- IAM role with policy to access S3 bucket from EC2 (webapp & codedeploy)
 - DB subnet group
 - RDS instance for DB
 - EC2 instance for application
 - DynamoDB table
+- Codedeploy application with deployment group
+- IAM role for codedeploy application
+- IAM user policy for ghactions to create deployment
 
 # Usage
 
@@ -44,6 +47,8 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 | key_name                         | SSH key name                                                                 | -                                   |
 | dynamodb_table                   | DynamoDB table                                                               | csye6225                            |
 | dynamodb_key                     | DynamoDB hash key table                                                      | id                                  |
+| codedeploy_bucket                | S3 bucket for codedeploy builds                                              | codedeploy.deepanshsachdeva.me      |
+| ghactions_user                   | Username for github actions                                                  | ghactions                           |
 
 #### Initialize a Terraform working directory
 ```

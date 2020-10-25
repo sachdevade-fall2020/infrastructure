@@ -24,3 +24,5 @@ instance_subnet   =
 key_name          = 
 dynamodb_table    = 
 dynamodb_key      = 
+codedeploy_bucket = 
+ghactions_user    = 

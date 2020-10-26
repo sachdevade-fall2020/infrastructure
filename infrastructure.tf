@@ -181,30 +181,35 @@ EOF
   }
 }
 
-#policy document
-data "aws_iam_policy_document" "s3_policy_document" {
-  version = "2012-10-17"
-  statement {
-    actions = [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:DeleteObject",
-      "s3:ListBucket"
-    ]
-    resources = [
-      "${aws_s3_bucket.s3_bucket.arn}",
-      "${aws_s3_bucket.s3_bucket.arn}/*"
-    ]
-  }
-  depends_on = [aws_s3_bucket.s3_bucket]
+#iam policy for ec2 role to access s3 for webapp
+resource "aws_iam_role_policy" "webapp_s3_policy" {
+  name   = "webapp-s3-${terraform.workspace}"
+  role   = aws_iam_role.ec2_role.id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "${aws_s3_bucket.s3_bucket.arn}",
+        "${aws_s3_bucket.s3_bucket.arn}/*"
+      ]
+    }
+  ]
+}
+EOF
 }
 
-#iam policy for role
-resource "aws_iam_role_policy" "s3_policy" {
-  name       = "WebAppS3"
-  role       = aws_iam_role.ec2_role.id
-  policy     = data.aws_iam_policy_document.s3_policy_document.json
-  depends_on = [aws_s3_bucket.s3_bucket]
+# data source to fetch codedeploy bucket
+data "aws_s3_bucket" "codedeploy_bucket" {
+  bucket = var.codedeploy_bucket
 }
 
 #codedeploy policy for role
@@ -222,8 +227,8 @@ resource "aws_iam_role_policy" "codedeploy_s3_policy" {
       ],
       "Effect": "Allow",
       "Resource": [
-        "arn:aws:s3:::${var.codedeploy_bucket}",
-        "arn:aws:s3:::${var.codedeploy_bucket}/*"
+        "${data.aws_s3_bucket.codedeploy_bucket.arn}",
+        "${data.aws_s3_bucket.codedeploy_bucket.arn}/*"
       ]
     }
   ]

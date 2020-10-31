@@ -296,8 +296,15 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
+# data source for latest ami
+data "aws_ami" "ec2_ami" {
+  most_recent = true
+  owners      = [var.account_id]
+}
+
+# ec2 instance for webapp
 resource "aws_instance" "ec2" {
-  ami                  = var.amis[var.region]
+  ami                  = data.aws_ami.ec2_ami.id
   instance_type        = var.instance_type
   subnet_id            = element([aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id], var.instance_subnet - 1)
   key_name             = var.key_name
@@ -348,9 +355,9 @@ resource "aws_dynamodb_table" "dynamodb_table" {
 
 #iam role for codedeploy
 resource "aws_iam_role" "codedeploy_role" {
-  description          = "Allows CodeDeploy to call AWS services"
-  name                 = "codedeploy-role-${terraform.workspace}"
-  assume_role_policy   = <<EOF
+  description        = "Allows CodeDeploy to call AWS services"
+  name               = "codedeploy-role-${terraform.workspace}"
+  assume_role_policy = <<EOF
 {
   "Version": "2012-10-17", 
   "Statement": [
@@ -364,16 +371,20 @@ resource "aws_iam_role" "codedeploy_role" {
   ]
 }
 EOF
-  permissions_boundary = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
   tags = {
     "Name" = "codedeploy-iam-role-${terraform.workspace}"
   }
 }
 
+resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
+  role       = aws_iam_role.codedeploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+}
+
 #codedeploy app
 resource "aws_codedeploy_app" "codedeploy_app" {
   compute_platform = "Server"
-  name             = "csye6225-webapp-${terraform.workspace}"
+  name             = "csye6225-webapp"
   depends_on       = [aws_instance.ec2]
 }
 

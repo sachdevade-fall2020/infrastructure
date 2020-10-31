@@ -1,10 +1,10 @@
 profile           = 
 region            = 
+account_id        = 
 vpc_name          = 
 cidr_block        = 
 cidrs             = 
 azs               = 
-amis              = 
 bucket_name       = 
 bucket_acl        = 
 db_identifier     = 

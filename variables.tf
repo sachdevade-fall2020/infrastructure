@@ -8,6 +8,10 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "account_id" {
+  description = "AWS account id"
+}
+
 variable "vpc_name" {
   description = "VPC name tag value."
   default     = "vpc"
@@ -89,10 +93,6 @@ variable "db_multiaz" {
   description = "DB multi AZ"
   type        = bool
   default     = false
-}
-
-variable "amis" {
-  type = map
 }
 
 variable "instance_type" {

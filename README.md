@@ -23,11 +23,11 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 |:--------------------------------:|:----------------------------------------------------------------------------:|:-----------------------------------:|
 | profile                          | AWS CLI profile                                                              | default                             |
 | region                           | AWS region for infrastructure                                                | us-east-1                           |
+| account_id                       | AWS account id                                                               | -                                   |
 | vpc_name                         | Name of VPC                                                                  | csye6225-vpc                        |
 | cidr_block                       | CIDR block for VPC                                                           | 10.0.0.0/16                         |
 | cidrs                            | CIDR block for each subnet (comma-delimited)                                 | 10.0.0.0/24,10.0.1.0/24,10.0.2.0/24 |
 | azs                              | AZs for each subnet (comma-delimited)                                        | a,b,c                               |
-| amis                             | AMI id for ec2 instance                                                      | -                                   |
 | bucket_name                      | Name of s3 bucket                                                            | webapp.deepansh.sachdeva            |
 | bucket_acl                       | ACL for s3 bucket                                                            | private                             |
 | db_identifier                    | Identifier for RDS                                                           | csye6225-f20                        |

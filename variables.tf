@@ -8,6 +8,10 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "account_id" {
+  description = "AWS account id"
+}
+
 variable "vpc_name" {
   description = "VPC name tag value."
   default     = "vpc"
@@ -91,10 +95,6 @@ variable "db_multiaz" {
   default     = false
 }
 
-variable "amis" {
-  type = map
-}
-
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
@@ -132,4 +132,19 @@ variable "dynamodb_table" {
 variable "dynamodb_key" {
   description = "Key for dynamodb table"
   default     = "id"
+}
+
+variable "codedeploy_bucket" {
+  description = "S3 bucket for codedeploy"
+  default     = "codedeploy.deepanshsachdeva.me"
+}
+
+variable "ghactions_user" {
+  description = "username for github actions"
+  default     = "ghactions"
+}
+
+variable "root_domain" {
+  description = "Root domain for hosted zone"
+  default     = "deepanshsachdeva.me"
 }

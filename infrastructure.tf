@@ -93,12 +93,6 @@ resource "aws_security_group" "app_sg" {
   vpc_id      = aws_vpc.csye6225_vpc.id
   ingress {
     protocol    = "tcp"
-    from_port   = "22"
-    to_port     = "22"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    protocol    = "tcp"
     from_port   = "80"
     to_port     = "80"
     cidr_blocks = ["0.0.0.0/0"]
@@ -161,6 +155,7 @@ resource "aws_s3_bucket" "s3_bucket" {
 #iam role for ec2
 resource "aws_iam_role" "ec2_role" {
   description        = "Policy for EC2 instance"
+  name               = "ec2-role-${terraform.workspace}"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17", 
@@ -180,30 +175,83 @@ EOF
   }
 }
 
-#policy document
-data "aws_iam_policy_document" "s3_policy_document" {
-  version = "2012-10-17"
-  statement {
-    actions = [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:DeleteObject",
-      "s3:ListBucket"
-    ]
-    resources = [
-      "${aws_s3_bucket.s3_bucket.arn}",
-      "${aws_s3_bucket.s3_bucket.arn}/*"
-    ]
-  }
-  depends_on = [aws_s3_bucket.s3_bucket]
+#iam policy for ec2 role to access s3 for webapp
+resource "aws_iam_role_policy" "webapp_s3_policy" {
+  name   = "webapp-s3-${terraform.workspace}"
+  role   = aws_iam_role.ec2_role.id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "${aws_s3_bucket.s3_bucket.arn}",
+        "${aws_s3_bucket.s3_bucket.arn}/*"
+      ]
+    }
+  ]
+}
+EOF
 }
 
-#iam policy for role
-resource "aws_iam_role_policy" "s3_policy" {
-  name       = "WebAppS3"
-  role       = aws_iam_role.ec2_role.id
-  policy     = data.aws_iam_policy_document.s3_policy_document.json
-  depends_on = [aws_s3_bucket.s3_bucket]
+# data source to fetch codedeploy bucket
+data "aws_s3_bucket" "codedeploy_bucket" {
+  bucket = var.codedeploy_bucket
+}
+
+#codedeploy policy for role
+resource "aws_iam_role_policy" "codedeploy_s3_policy" {
+  name   = "codedeploy-ec2-s3-${terraform.workspace}"
+  role   = aws_iam_role.ec2_role.id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+          "s3:GetObject",
+          "s3:ListBucket"
+      ],
+      "Effect": "Allow",
+      "Resource": [
+        "${data.aws_s3_bucket.codedeploy_bucket.arn}",
+        "${data.aws_s3_bucket.codedeploy_bucket.arn}/*"
+      ]
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_user_policy" "ghactions_s3_policy" {
+  name   = "ghactions-s3-policy-${terraform.workspace}"
+  user   = var.ghactions_user
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${var.codedeploy_bucket}",
+        "arn:aws:s3:::${var.codedeploy_bucket}/*"
+      ]
+    }
+  ]
+}
+EOF
 }
 
 #db subnet group for rds
@@ -238,11 +286,19 @@ resource "aws_db_instance" "rds" {
 
 #iam instance profile for ec2
 resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "csye6225-ec2-profile-${terraform.workspace}"
   role = aws_iam_role.ec2_role.name
 }
 
+# data source for latest ami
+data "aws_ami" "ec2_ami" {
+  most_recent = true
+  owners      = [var.account_id]
+}
+
+# ec2 instance for webapp
 resource "aws_instance" "ec2" {
-  ami                  = var.amis[var.region]
+  ami                  = data.aws_ami.ec2_ami.id
   instance_type        = var.instance_type
   subnet_id            = element([aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id], var.instance_subnet - 1)
   key_name             = var.key_name
@@ -269,12 +325,12 @@ chown -R ubuntu:www-data /var/www
 usermod -a -G www-data ubuntu
 EOF
   tags = {
-    "Name" = "ec2-${terraform.workspace}"
+    "Name" = "csye6225-ec2-${terraform.workspace}"
   }
   depends_on = [aws_db_instance.rds]
 }
 
-#dynanodb table
+#dynamodb table
 resource "aws_dynamodb_table" "dynamodb_table" {
   name           = var.dynamodb_table
   hash_key       = var.dynamodb_key
@@ -289,6 +345,120 @@ resource "aws_dynamodb_table" "dynamodb_table" {
   tags = {
     "Name" = "csye6225-dynamodb-${terraform.workspace}"
   }
+}
+
+#iam role for codedeploy
+resource "aws_iam_role" "codedeploy_role" {
+  description        = "Allows CodeDeploy to call AWS services"
+  name               = "codedeploy-role-${terraform.workspace}"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17", 
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole", 
+      "Effect": "Allow", 
+      "Principal": {
+        "Service": "codedeploy.amazonaws.com"
+      }
+    }
+  ]
+}
+EOF
+  tags = {
+    "Name" = "codedeploy-iam-role-${terraform.workspace}"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
+  role       = aws_iam_role.codedeploy_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+}
+
+#codedeploy app
+resource "aws_codedeploy_app" "codedeploy_app" {
+  compute_platform = "Server"
+  name             = "csye6225-webapp"
+  depends_on       = [aws_instance.ec2]
+}
+
+resource "aws_codedeploy_deployment_group" "deployment_group" {
+  app_name              = aws_codedeploy_app.codedeploy_app.name
+  deployment_group_name = "csye6225-webapp-deployment"
+  deployment_style {
+    deployment_type = "IN_PLACE"
+  }
+  auto_rollback_configuration {
+    enabled = true
+    events  = ["DEPLOYMENT_FAILURE"]
+  }
+  deployment_config_name = "CodeDeployDefault.AllAtOnce"
+  ec2_tag_filter {
+    key   = "Name"
+    type  = "KEY_AND_VALUE"
+    value = "csye6225-ec2-${terraform.workspace}"
+  }
+  service_role_arn = aws_iam_role.codedeploy_role.arn
+}
+
+#data source to fetch account id
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_user_policy" "ghactions_codedeploy_policy" {
+  name   = "ghactions-codedeploy-policy-${terraform.workspace}"
+  user   = var.ghactions_user
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codedeploy:RegisterApplicationRevision",
+        "codedeploy:GetApplicationRevision"
+      ],
+      "Resource": [
+        "arn:aws:codedeploy:${var.region}:${data.aws_caller_identity.current.account_id}:application:${aws_codedeploy_app.codedeploy_app.name}"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codedeploy:CreateDeployment",
+        "codedeploy:GetDeployment"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "codedeploy:GetDeploymentConfig"
+      ],
+      "Resource": [
+        "arn:aws:codedeploy:${var.region}:${data.aws_caller_identity.current.account_id}:deploymentconfig:CodeDeployDefault.OneAtATime",
+        "arn:aws:codedeploy:${var.region}:${data.aws_caller_identity.current.account_id}:deploymentconfig:CodeDeployDefault.HalfAtATime",
+        "arn:aws:codedeploy:${var.region}:${data.aws_caller_identity.current.account_id}:deploymentconfig:CodeDeployDefault.AllAtOnce"
+      ]
+    }
+  ]
+}
+  EOF
+}
+
+# data source to fetch hosted zone
+data "aws_route53_zone" "hosted_zone" {
+  name = "${var.profile}.${var.root_domain}"
+}
+
+# dns record to add public ip of ec2
+resource "aws_route53_record" "api_dns_record" {
+  zone_id = data.aws_route53_zone.hosted_zone.zone_id
+  name    = "api.${var.profile}.${var.root_domain}"
+  type    = "A"
+  ttl     = 30
+  records = [aws_instance.ec2.public_ip]
 }
 
 #outputs
@@ -314,4 +484,8 @@ output "ec2_public_ip" {
 
 output "dynamodb_name" {
   value = aws_dynamodb_table.dynamodb_table.id
+}
+
+output "api_domain_name" {
+  value = aws_route53_record.api_dns_record.name
 }

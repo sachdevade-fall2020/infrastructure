@@ -7,11 +7,14 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 - Application security table
 - Database security table
 - S3 Bucket
-- IAM role with policy to access S3 bucket
+- IAM role with policy to access S3 bucket from EC2 (webapp & codedeploy)
 - DB subnet group
 - RDS instance for DB
 - EC2 instance for application
 - DynamoDB table
+- Codedeploy application with deployment group
+- IAM role for codedeploy application
+- IAM user policy for ghactions to create deployment
 
 # Usage
 
@@ -20,11 +23,11 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 |:--------------------------------:|:----------------------------------------------------------------------------:|:-----------------------------------:|
 | profile                          | AWS CLI profile                                                              | default                             |
 | region                           | AWS region for infrastructure                                                | us-east-1                           |
+| account_id                       | AWS account id                                                               | -                                   |
 | vpc_name                         | Name of VPC                                                                  | csye6225-vpc                        |
 | cidr_block                       | CIDR block for VPC                                                           | 10.0.0.0/16                         |
 | cidrs                            | CIDR block for each subnet (comma-delimited)                                 | 10.0.0.0/24,10.0.1.0/24,10.0.2.0/24 |
 | azs                              | AZs for each subnet (comma-delimited)                                        | a,b,c                               |
-| amis                             | AMI id for ec2 instance                                                      | -                                   |
 | bucket_name                      | Name of s3 bucket                                                            | webapp.deepansh.sachdeva            |
 | bucket_acl                       | ACL for s3 bucket                                                            | private                             |
 | db_identifier                    | Identifier for RDS                                                           | csye6225-f20                        |
@@ -44,6 +47,9 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 | key_name                         | SSH key name                                                                 | -                                   |
 | dynamodb_table                   | DynamoDB table                                                               | csye6225                            |
 | dynamodb_key                     | DynamoDB hash key table                                                      | id                                  |
+| codedeploy_bucket                | S3 bucket for codedeploy builds                                              | codedeploy.deepanshsachdeva.me      |
+| ghactions_user                   | Username for github actions                                                  | ghactions                           |
+| root_domain                      | Root domain for hosted zone                                                  | deepanshsachdeva.me                 |
 
 #### Initialize a Terraform working directory
 ```

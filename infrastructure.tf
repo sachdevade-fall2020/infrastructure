@@ -93,12 +93,6 @@ resource "aws_security_group" "app_sg" {
   vpc_id      = aws_vpc.csye6225_vpc.id
   ingress {
     protocol    = "tcp"
-    from_port   = "22"
-    to_port     = "22"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    protocol    = "tcp"
     from_port   = "80"
     to_port     = "80"
     cidr_blocks = ["0.0.0.0/0"]

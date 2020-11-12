@@ -319,6 +319,7 @@ resource "aws_instance" "ec2" {
   user_data = <<EOF
 #!/bin/bash
 echo "# App Environment Variables"
+echo "export APP_ENV=production" >> /etc/environment
 echo "export DB_HOST=${aws_db_instance.rds.address}" >> /etc/environment
 echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
 echo "export DB_DATABASE=${var.db_name}" >> /etc/environment

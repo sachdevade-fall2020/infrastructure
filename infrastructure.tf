@@ -175,6 +175,12 @@ EOF
   }
 }
 
+# cloudwatch policy for ec2 role
+resource "aws_iam_role_policy_attachment" "cloudwatch_policy" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
 #iam policy for ec2 role to access s3 for webapp
 resource "aws_iam_role_policy" "webapp_s3_policy" {
   name   = "webapp-s3-${terraform.workspace}"

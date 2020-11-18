@@ -590,9 +590,9 @@ resource "aws_autoscaling_policy" "autoscaling_scale_down_policy" {
 # cloudwatch metric for scaling up
 resource "aws_cloudwatch_metric_alarm" "cpu_alarm_high" {
   alarm_name          = "cpu-alarm-high"
-  alarm_description   = "Scale up if CPU is > 10% for 1 minute"
+  alarm_description   = "Scale up if CPU is > 5% for 1 minute"
   comparison_operator = "GreaterThanThreshold"
-  threshold           = "10"
+  threshold           = "5"
   evaluation_periods  = "2"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"

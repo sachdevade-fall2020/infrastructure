@@ -91,24 +91,28 @@ resource "aws_security_group" "app_sg" {
   name        = "application-sg"
   description = "Security group for EC2 instance with web application"
   vpc_id      = aws_vpc.csye6225_vpc.id
+
   ingress {
-    protocol    = "tcp"
-    from_port   = "80"
-    to_port     = "80"
-    cidr_blocks = ["0.0.0.0/0"]
+    protocol        = "tcp"
+    from_port       = "80"
+    to_port         = "80"
+    security_groups = [aws_security_group.lb_sg.id]
   }
+
   ingress {
-    protocol    = "tcp"
-    from_port   = "443"
-    to_port     = "443"
-    cidr_blocks = ["0.0.0.0/0"]
+    protocol        = "tcp"
+    from_port       = "443"
+    to_port         = "443"
+    security_groups = [aws_security_group.lb_sg.id]
   }
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   tags = {
     "Name" = "application-sg-${terraform.workspace}"
   }
@@ -119,12 +123,14 @@ resource "aws_security_group" "db_sg" {
   name        = "database-sg"
   description = "Security group for RDS instance for database"
   vpc_id      = aws_vpc.csye6225_vpc.id
+
   ingress {
     protocol        = "tcp"
     from_port       = "3306"
     to_port         = "3306"
     security_groups = [aws_security_group.app_sg.id]
   }
+
   tags = {
     "Name" = "database-sg-${terraform.workspace}"
   }
@@ -135,6 +141,7 @@ resource "aws_s3_bucket" "s3_bucket" {
   bucket        = var.bucket_name
   acl           = var.bucket_acl
   force_destroy = true
+
   lifecycle_rule {
     id      = "StorageTransitionRule"
     enabled = true
@@ -143,6 +150,7 @@ resource "aws_s3_bucket" "s3_bucket" {
       storage_class = "STANDARD_IA"
     }
   }
+
   server_side_encryption_configuration {
     rule {
       apply_server_side_encryption_by_default {
@@ -302,40 +310,6 @@ data "aws_ami" "ec2_ami" {
   owners      = [var.account_id]
 }
 
-# ec2 instance for webapp
-resource "aws_instance" "ec2" {
-  ami                  = data.aws_ami.ec2_ami.id
-  instance_type        = var.instance_type
-  subnet_id            = element([aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id], var.instance_subnet - 1)
-  key_name             = var.key_name
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.id
-  security_groups      = [aws_security_group.app_sg.id]
-  ebs_block_device {
-    device_name           = "/dev/sda1"
-    volume_type           = var.instance_vol_type
-    volume_size           = var.instance_vol_size
-    delete_on_termination = true
-  }
-  user_data = <<EOF
-#!/bin/bash
-echo "# App Environment Variables"
-echo "export DB_HOST=${aws_db_instance.rds.address}" >> /etc/environment
-echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
-echo "export DB_DATABASE=${var.db_name}" >> /etc/environment
-echo "export DB_USERNAME=${var.db_username}" >> /etc/environment
-echo "export DB_PASSWORD=${var.db_password}" >> /etc/environment
-echo "export FILESYSTEM_DRIVER=s3" >> /etc/environment
-echo "export AWS_BUCKET=${aws_s3_bucket.s3_bucket.id}" >> /etc/environment
-echo "export AWS_DEFAULT_REGION=${var.region}" >> /etc/environment
-chown -R ubuntu:www-data /var/www
-usermod -a -G www-data ubuntu
-EOF
-  tags = {
-    "Name" = "csye6225-ec2-${terraform.workspace}"
-  }
-  depends_on = [aws_db_instance.rds]
-}
-
 #dynamodb table
 resource "aws_dynamodb_table" "dynamodb_table" {
   name           = var.dynamodb_table
@@ -385,31 +359,37 @@ resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
 resource "aws_codedeploy_app" "codedeploy_app" {
   compute_platform = "Server"
   name             = "csye6225-webapp"
-  depends_on       = [aws_instance.ec2]
+  # depends_on       = [aws_instance.ec2]
 }
 
 resource "aws_codedeploy_deployment_group" "deployment_group" {
-  app_name              = aws_codedeploy_app.codedeploy_app.name
-  deployment_group_name = "csye6225-webapp-deployment"
+  app_name               = aws_codedeploy_app.codedeploy_app.name
+  deployment_group_name  = "csye6225-webapp-deployment"
+  deployment_config_name = "CodeDeployDefault.AllAtOnce"
+  service_role_arn       = aws_iam_role.codedeploy_role.arn
+  autoscaling_groups     = [aws_autoscaling_group.autoscaling_group.name]
+
   deployment_style {
-    deployment_type = "IN_PLACE"
+    deployment_option = "WITHOUT_TRAFFIC_CONTROL"
+    deployment_type   = "IN_PLACE"
   }
+
   auto_rollback_configuration {
     enabled = true
     events  = ["DEPLOYMENT_FAILURE"]
   }
-  deployment_config_name = "CodeDeployDefault.AllAtOnce"
+
   ec2_tag_filter {
     key   = "Name"
     type  = "KEY_AND_VALUE"
     value = "csye6225-ec2-${terraform.workspace}"
   }
-  service_role_arn = aws_iam_role.codedeploy_role.arn
 }
 
 #data source to fetch account id
 data "aws_caller_identity" "current" {}
 
+# codedeploy policy for ghactions
 resource "aws_iam_user_policy" "ghactions_codedeploy_policy" {
   name   = "ghactions-codedeploy-policy-${terraform.workspace}"
   user   = var.ghactions_user
@@ -453,18 +433,212 @@ resource "aws_iam_user_policy" "ghactions_codedeploy_policy" {
   EOF
 }
 
+# Load balancer security group
+resource "aws_security_group" "lb_sg" {
+  name        = "lb-sg"
+  description = "Security group for load balancer"
+  vpc_id      = aws_vpc.csye6225_vpc.id
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 80
+    to_port     = 80
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    protocol    = "tcp"
+    from_port   = 443
+    to_port     = 443
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    "Name" = "lb-sg-${terraform.workspace}"
+  }
+}
+
+# Load balancer
+resource "aws_lb" "application_lb" {
+  name               = "application-lb"
+  load_balancer_type = "application"
+  ip_address_type    = "ipv4"
+  internal           = false
+  subnets            = [aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id]
+  security_groups    = [aws_security_group.lb_sg.id]
+
+  tags = {
+    "Name" = "application-lb-${terraform.workspace}"
+  }
+}
+
+# Load balancer target group
+resource "aws_lb_target_group" "lb_target_group" {
+  name                 = "application-target-group"
+  port                 = 80
+  protocol             = "HTTP"
+  target_type          = "instance"
+  vpc_id               = aws_vpc.csye6225_vpc.id
+  deregistration_delay = 20
+
+  health_check {
+    path                = "/v1/test"
+    protocol            = "HTTP"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 10
+    healthy_threshold   = 3
+    unhealthy_threshold = 5
+  }
+
+  stickiness {
+    type = "lb_cookie"
+  }
+}
+
+# Load balancer listener
+resource "aws_lb_listener" "lb_listener" {
+  load_balancer_arn = aws_lb.application_lb.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.lb_target_group.arn
+  }
+}
+
+# Autoscaling launch configuration
+resource "aws_launch_configuration" "autoscaling_launch_configuration" {
+  name                        = "autoscaling-launch-configuration"
+  image_id                    = data.aws_ami.ec2_ami.id
+  instance_type               = var.instance_type
+  key_name                    = var.key_name
+  security_groups             = [aws_security_group.app_sg.id]
+  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.id
+  associate_public_ip_address = true
+
+  root_block_device {
+    volume_type = var.instance_vol_type
+    volume_size = var.instance_vol_size
+  }
+
+  user_data = <<EOF
+#!/bin/bash
+echo "# App Environment Variables"
+echo "export DB_HOST=${aws_db_instance.rds.address}" >> /etc/environment
+echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
+echo "export DB_DATABASE=${var.db_name}" >> /etc/environment
+echo "export DB_USERNAME=${var.db_username}" >> /etc/environment
+echo "export DB_PASSWORD=${var.db_password}" >> /etc/environment
+echo "export FILESYSTEM_DRIVER=s3" >> /etc/environment
+echo "export AWS_BUCKET=${aws_s3_bucket.s3_bucket.id}" >> /etc/environment
+echo "export AWS_DEFAULT_REGION=${var.region}" >> /etc/environment
+chown -R ubuntu:www-data /var/www
+usermod -a -G www-data ubuntu
+EOF
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Autoscaling group
+resource "aws_autoscaling_group" "autoscaling_group" {
+  name                 = "autoscaling-group"
+  launch_configuration = aws_launch_configuration.autoscaling_launch_configuration.name
+  vpc_zone_identifier  = [aws_subnet.subnet1.id, aws_subnet.subnet2.id, aws_subnet.subnet3.id]
+  target_group_arns    = [aws_lb_target_group.lb_target_group.arn]
+  default_cooldown     = 60
+  desired_capacity     = 3
+  min_size             = 3
+  max_size             = 5
+  health_check_type    = "EC2"
+
+  tag {
+    key                 = "Name"
+    value               = "csye6225-ec2-${terraform.workspace}"
+    propagate_at_launch = true
+  }
+}
+
+# Autoscaling scale up policy
+resource "aws_autoscaling_policy" "autoscaling_scale_up_policy" {
+  name                   = "autoscaling_scale_up_policy"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 60
+  autoscaling_group_name = aws_autoscaling_group.autoscaling_group.name
+}
+
+# Autoscaling scale down policy
+resource "aws_autoscaling_policy" "autoscaling_scale_down_policy" {
+  name                   = "autoscaling_scale_down_policy"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 60
+  autoscaling_group_name = aws_autoscaling_group.autoscaling_group.name
+}
+
+# cloudwatch metric for scaling up
+resource "aws_cloudwatch_metric_alarm" "cpu_alarm_high" {
+  alarm_name          = "cpu-alarm-high"
+  alarm_description   = "Scale up if CPU is > 5% for 1 minute"
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = "5"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "60"
+  statistic           = "Average"
+  alarm_actions       = [aws_autoscaling_policy.autoscaling_scale_up_policy.arn]
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.autoscaling_group.name
+  }
+}
+
+# cloudwatch metric for scaling down
+resource "aws_cloudwatch_metric_alarm" "cpu_alarm_low" {
+  alarm_name          = "cpu-alarm-low"
+  alarm_description   = "Scale down if CPU is < 3% for 1 minute"
+  comparison_operator = "LessThanThreshold"
+  threshold           = "3"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "60"
+  statistic           = "Average"
+  alarm_actions       = [aws_autoscaling_policy.autoscaling_scale_down_policy.arn]
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.autoscaling_group.name
+  }
+}
+
 # data source to fetch hosted zone
 data "aws_route53_zone" "hosted_zone" {
   name = "${var.profile}.${var.root_domain}"
 }
 
-# dns record to add public ip of ec2
+# dns record for alias of load balancer
 resource "aws_route53_record" "api_dns_record" {
   zone_id = data.aws_route53_zone.hosted_zone.zone_id
   name    = "api.${var.profile}.${var.root_domain}"
   type    = "A"
-  ttl     = 30
-  records = [aws_instance.ec2.public_ip]
+
+  alias {
+    name                   = aws_lb.application_lb.dns_name
+    zone_id                = aws_lb.application_lb.zone_id
+    evaluate_target_health = true
+  }
 }
 
 #outputs
@@ -482,10 +656,6 @@ output "bucket_arn" {
 
 output "rds_address" {
   value = aws_db_instance.rds.address
-}
-
-output "ec2_public_ip" {
-  value = aws_instance.ec2.public_ip
 }
 
 output "dynamodb_name" {

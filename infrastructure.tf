@@ -723,6 +723,28 @@ resource "aws_sns_topic_subscription" "user_notification_subscription" {
   endpoint  = aws_lambda_function.lambda_function.arn
 }
 
+# ec2 role to publish sns message
+resource "aws_iam_role_policy" "ec2_sns_policy" {
+  name   = "ec2-sns-${terraform.workspace}"
+  role   = aws_iam_role.ec2_role.id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sns:Publish"
+      ],
+      "Resource": [
+        "${aws_sns_topic.user_notification.arn}",
+      ]
+    }
+  ]
+}
+EOF
+}
+
 # lambda permission to trigger from sns
 resource "aws_lambda_permission" "lambda_permission" {
   statement_id  = "AllowExecutionFromSNS"

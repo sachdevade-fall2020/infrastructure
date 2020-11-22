@@ -50,6 +50,11 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 | codedeploy_bucket                | S3 bucket for codedeploy builds                                              | codedeploy.deepanshsachdeva.me      |
 | ghactions_user                   | Username for github actions                                                  | ghactions                           |
 | root_domain                      | Root domain for hosted zone                                                  | deepanshsachdeva.me                 |
+| lambda_handler                   | Handler for lambda function                                                  | index.handler                       |
+| lambda_runtime                   | Runtime for lambda function                                                  | nodejs12.x                          |
+| lambda_memory                    | Memory limit for lambda functio                                              | 256                                 |
+| lambda_timeout                   | Timeout for lambda function                                                  | 60                                  |
+| lambda_zip                       | Zip code for lambda code                                                     | function_code.zip                   |
 
 #### Initialize a Terraform working directory
 ```

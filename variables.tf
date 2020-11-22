@@ -148,3 +148,32 @@ variable "root_domain" {
   description = "Root domain for hosted zone"
   default     = "deepanshsachdeva.me"
 }
+
+variable "lambda_handler" {
+  description = "handler for lambda function"
+  type        = string
+  default     = "index.handler"
+}
+
+variable "lambda_runtime" {
+  description = "runtime for lambda function"
+  type        = string
+  default     = "nodejs12.x"
+}
+
+variable "lambda_memory" {
+  description = "memory for lambda function"
+  type        = number
+  default     = 256
+}
+
+variable "lambda_timeout" {
+  description = "timeout for lambda function"
+  type        = number
+  default     = 60
+}
+variable "lambda_zip" {
+  description = "s3 key for lambda function zip code"
+  type        = string
+  default     = "function_code.zip"
+}

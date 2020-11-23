@@ -737,7 +737,7 @@ resource "aws_iam_role_policy" "ec2_sns_policy" {
         "sns:Publish"
       ],
       "Resource": [
-        "${aws_sns_topic.user_notification.arn}",
+        "${aws_sns_topic.user_notification.arn}"
       ]
     }
   ]

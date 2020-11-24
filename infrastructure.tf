@@ -533,6 +533,7 @@ resource "aws_launch_configuration" "autoscaling_launch_configuration" {
   user_data = <<EOF
 #!/bin/bash
 echo "# App Environment Variables"
+echo "export APP_URL=${aws_route53_record.api_dns_record.name}" >> /etc/environment
 echo "export DB_HOST=${aws_db_instance.rds.address}" >> /etc/environment
 echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
 echo "export DB_DATABASE=${var.db_name}" >> /etc/environment
@@ -540,6 +541,7 @@ echo "export DB_USERNAME=${var.db_username}" >> /etc/environment
 echo "export DB_PASSWORD=${var.db_password}" >> /etc/environment
 echo "export FILESYSTEM_DRIVER=s3" >> /etc/environment
 echo "export AWS_BUCKET=${aws_s3_bucket.s3_bucket.id}" >> /etc/environment
+echo "export AWS_SNS_ARN=${aws_sns_topic.user_notification.arn}" >> /etc/environment
 echo "export AWS_DEFAULT_REGION=${var.region}" >> /etc/environment
 chown -R ubuntu:www-data /var/www
 usermod -a -G www-data ubuntu

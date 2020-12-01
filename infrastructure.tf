@@ -533,6 +533,7 @@ resource "aws_launch_configuration" "autoscaling_launch_configuration" {
   user_data = <<EOF
 #!/bin/bash
 echo "# App Environment Variables"
+echo "export APP_URL=${aws_route53_record.api_dns_record.name}" >> /etc/environment
 echo "export DB_HOST=${aws_db_instance.rds.address}" >> /etc/environment
 echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
 echo "export DB_DATABASE=${var.db_name}" >> /etc/environment
@@ -540,6 +541,7 @@ echo "export DB_USERNAME=${var.db_username}" >> /etc/environment
 echo "export DB_PASSWORD=${var.db_password}" >> /etc/environment
 echo "export FILESYSTEM_DRIVER=s3" >> /etc/environment
 echo "export AWS_BUCKET=${aws_s3_bucket.s3_bucket.id}" >> /etc/environment
+echo "export AWS_SNS_ARN=${aws_sns_topic.user_notification.arn}" >> /etc/environment
 echo "export AWS_DEFAULT_REGION=${var.region}" >> /etc/environment
 chown -R ubuntu:www-data /var/www
 usermod -a -G www-data ubuntu
@@ -639,6 +641,119 @@ resource "aws_route53_record" "api_dns_record" {
     zone_id                = aws_lb.application_lb.zone_id
     evaluate_target_health = true
   }
+}
+
+# iam role for lambda
+resource "aws_iam_role" "lambda_role" {
+  description        = "Allows Lambda to call AWS services"
+  name               = "lambda-role-${terraform.workspace}"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17", 
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole", 
+      "Effect": "Allow", 
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      }
+    }
+  ]
+}
+EOF
+  tags = {
+    "Name" = "lambda-iam-role-${terraform.workspace}"
+  }
+}
+
+# basic execution policy attachment for lambda
+resource "aws_iam_policy_attachment" "aws_lambda_basic_execution" {
+  name       = "aws-lambda-basic-execution"
+  roles      = [aws_iam_role.lambda_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# ses access policy attachment for lambda
+resource "aws_iam_policy_attachment" "aws_ses_lambda_policy" {
+  name       = "aws-ses-lambda-policy"
+  roles      = [aws_iam_role.lambda_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+}
+
+# sns access policy attachment for lambda
+resource "aws_iam_policy_attachment" "aws_sns_lambda_policy" {
+  name       = "aws-sns-lambda-policy"
+  roles      = [aws_iam_role.lambda_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
+}
+
+# dynamodb access policy attachment for lambda
+resource "aws_iam_policy_attachment" "aws_dynamodb_lambda_policy" {
+  name       = "aws-dynamodb-lambda-policy"
+  roles      = [aws_iam_role.lambda_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+}
+
+# lambda function
+resource "aws_lambda_function" "lambda_function" {
+  function_name = "notify_user"
+  role          = aws_iam_role.lambda_role.arn
+  handler       = var.lambda_handler
+  runtime       = var.lambda_runtime
+  filename      = var.lambda_zip
+  memory_size   = var.lambda_memory
+  timeout       = var.lambda_timeout
+
+  environment {
+    variables = {
+      table_name = aws_dynamodb_table.dynamodb_table.id
+      sender     = "no-reply@${var.profile}.${var.root_domain}"
+    }
+  }
+}
+
+# sns topic
+resource "aws_sns_topic" "user_notification" {
+  name         = "user-notification"
+  display_name = "user-notification"
+}
+
+# sns Subscription
+resource "aws_sns_topic_subscription" "user_notification_subscription" {
+  protocol  = "lambda"
+  topic_arn = aws_sns_topic.user_notification.arn
+  endpoint  = aws_lambda_function.lambda_function.arn
+}
+
+# ec2 role to publish sns message
+resource "aws_iam_role_policy" "ec2_sns_policy" {
+  name   = "ec2-sns-${terraform.workspace}"
+  role   = aws_iam_role.ec2_role.id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sns:Publish"
+      ],
+      "Resource": [
+        "${aws_sns_topic.user_notification.arn}"
+      ]
+    }
+  ]
+}
+EOF
+}
+
+# lambda permission to trigger from sns
+resource "aws_lambda_permission" "lambda_permission" {
+  statement_id  = "AllowExecutionFromSNS"
+  principal     = "sns.amazonaws.com"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda_function.function_name
+  source_arn    = aws_sns_topic.user_notification.arn
 }
 
 #outputs

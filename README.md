@@ -15,6 +15,11 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 - Codedeploy application with deployment group
 - IAM role for codedeploy application
 - IAM user policy for ghactions to create deployment
+- Load balancer with target group & listener
+- Autoscaling group
+- Autoscaling launch confguration
+- Autoscaling scale up & down policies
+- Metric alarms to scale up & down
 
 # Usage
 
@@ -54,7 +59,7 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 | lambda_runtime                   | Runtime for lambda function                                                  | nodejs12.x                          |
 | lambda_memory                    | Memory limit for lambda functio                                              | 256                                 |
 | lambda_timeout                   | Timeout for lambda function                                                  | 60                                  |
-| lambda_zip                       | Zip code for lambda code                                                     | function_code.zip                   |
+| lambda_zip                       | Zip file for lambda code                                                     | function_code.zip                   |
 
 #### Initialize a Terraform working directory
 ```

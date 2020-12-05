@@ -293,6 +293,7 @@ resource "aws_db_instance" "rds" {
   publicly_accessible    = var.db_public_access
   multi_az               = var.db_multiaz
   skip_final_snapshot    = true
+  ca_cert_identifier     = "rds-ca-2019"
   tags = {
     "Name" = "rds-${terraform.workspace}"
   }
@@ -441,13 +442,6 @@ resource "aws_security_group" "lb_sg" {
 
   ingress {
     protocol    = "tcp"
-    from_port   = 80
-    to_port     = 80
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    protocol    = "tcp"
     from_port   = 443
     to_port     = 443
     cidr_blocks = ["0.0.0.0/0"]
@@ -503,11 +497,19 @@ resource "aws_lb_target_group" "lb_target_group" {
   }
 }
 
+# ACM certificate
+data "aws_acm_certificate" "ssl_certificate" {
+  domain   = "${var.profile}.${var.root_domain}"
+  types = [ "IMPORTED" ]
+  statuses = ["ISSUED"]
+}
+
 # Load balancer listener
 resource "aws_lb_listener" "lb_listener" {
   load_balancer_arn = aws_lb.application_lb.arn
-  port              = 80
-  protocol          = "HTTP"
+  port              = 443
+  protocol          = "HTTPS"
+  certificate_arn   = data.aws_acm_certificate.ssl_certificate.arn
 
   default_action {
     type             = "forward"
@@ -539,6 +541,7 @@ echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
 echo "export DB_DATABASE=${var.db_name}" >> /etc/environment
 echo "export DB_USERNAME=${var.db_username}" >> /etc/environment
 echo "export DB_PASSWORD=${var.db_password}" >> /etc/environment
+echo "export MYSQL_ATTR_SSL_CA=rds-combined-ca-bundle.pem" >> /etc/environment
 echo "export FILESYSTEM_DRIVER=s3" >> /etc/environment
 echo "export AWS_BUCKET=${aws_s3_bucket.s3_bucket.id}" >> /etc/environment
 echo "export AWS_SNS_ARN=${aws_sns_topic.user_notification.arn}" >> /etc/environment
@@ -633,7 +636,7 @@ data "aws_route53_zone" "hosted_zone" {
 # dns record for alias of load balancer
 resource "aws_route53_record" "api_dns_record" {
   zone_id = data.aws_route53_zone.hosted_zone.zone_id
-  name    = "api.${var.profile}.${var.root_domain}"
+  name    = "${var.profile}.${var.root_domain}"
   type    = "A"
 
   alias {

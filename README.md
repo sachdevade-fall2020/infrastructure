@@ -20,6 +20,9 @@ Terraform template for CSYE 6225 Fall 2020 to create AWS infrastructure with fol
 - Autoscaling launch confguration
 - Autoscaling scale up & down policies
 - Metric alarms to scale up & down
+- Lambda function
+- IAM role with policy to access SES & SNS from lambda function
+- SNS topic with lambda function as subscription
 
 # Usage
 
@@ -89,6 +92,14 @@ terraform apply
 #### Destroy infrastructure
 ```
 terraform destroy
+```
+
+### Import SSL certificate to [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/) using AWS CLI
+```
+aws acm import-certificate \
+--certificate fileb://path_to_crt_file \
+--private-key fileb://path_to_private_key \
+--certificate-chain fileb://path_to_ca_bundle_file
 ```
 
 # Author

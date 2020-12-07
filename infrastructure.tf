@@ -294,6 +294,7 @@ resource "aws_db_instance" "rds" {
   multi_az               = var.db_multiaz
   skip_final_snapshot    = true
   ca_cert_identifier     = "rds-ca-2019"
+  storage_encrypted      = true
   tags = {
     "Name" = "rds-${terraform.workspace}"
   }

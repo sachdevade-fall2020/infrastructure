@@ -295,8 +295,21 @@ resource "aws_db_instance" "rds" {
   skip_final_snapshot    = true
   ca_cert_identifier     = "rds-ca-2019"
   storage_encrypted      = true
+  parameter_group_name   = aws_db_parameter_group.rds_mysql_group.name
   tags = {
     "Name" = "rds-${terraform.workspace}"
+  }
+}
+
+# custom parameter group
+resource "aws_db_parameter_group" "rds_mysql_group" {
+  name   = "rds-mysql-group"
+  family = "mysql5.7"
+
+  parameter {
+    name         = "performance_schema"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 }
 
@@ -501,7 +514,7 @@ resource "aws_lb_target_group" "lb_target_group" {
 # ACM certificate
 data "aws_acm_certificate" "ssl_certificate" {
   domain   = "${var.profile}.${var.root_domain}"
-  types = [ "IMPORTED" ]
+  types    = ["IMPORTED"]
   statuses = ["ISSUED"]
 }
 
@@ -542,7 +555,6 @@ echo "export DB_PORT=${aws_db_instance.rds.port}" >> /etc/environment
 echo "export DB_DATABASE=${var.db_name}" >> /etc/environment
 echo "export DB_USERNAME=${var.db_username}" >> /etc/environment
 echo "export DB_PASSWORD=${var.db_password}" >> /etc/environment
-echo "export MYSQL_ATTR_SSL_CA=rds-combined-ca-bundle.pem" >> /etc/environment
 echo "export FILESYSTEM_DRIVER=s3" >> /etc/environment
 echo "export AWS_BUCKET=${aws_s3_bucket.s3_bucket.id}" >> /etc/environment
 echo "export AWS_SNS_ARN=${aws_sns_topic.user_notification.arn}" >> /etc/environment
